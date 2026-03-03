@@ -59,9 +59,14 @@ function App() {
       {/* ── UI layer ── */}
       <div className="ui-layer">
         <header className="glass-panel" style={{ margin: '20px', padding: '15px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'auto' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, background: 'linear-gradient(to right, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            EarthGallery
-          </h1>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, background: 'linear-gradient(to right, #60a5fa, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Begallery
+            </h1>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic', letterSpacing: '0.03em' }}>
+              for my baby 🤍
+            </span>
+          </div>
           <button className="btn btn-primary" onClick={() => setIsUploadOpen(true)}>
             Upload Memories
           </button>
