@@ -38,8 +38,19 @@ export default function EarthGlobe({ photos, onPhotoClick }: EarthGlobeProps) {
         }
     });
 
+    const GLOBE_RADIUS = 3.01;
+
     const photoPositions = useMemo(() => {
-        return generatePointsOnSphere(photos.length, 3.01); // 3.01 so they sit slightly above the surface
+        return generatePointsOnSphere(photos.length, GLOBE_RADIUS);
+    }, [photos.length]);
+
+    // Dynamic tile size: distribute sphere surface area (4πr²) equally across N photos.
+    // Each tile gets √(4πr²/N) side length. We clamp between a min and max for aesthetics.
+    const tileSize = useMemo(() => {
+        if (photos.length === 0) return 0.4;
+        const surfaceArea = 4 * Math.PI * GLOBE_RADIUS * GLOBE_RADIUS;
+        const raw = Math.sqrt(surfaceArea / photos.length);
+        return Math.min(Math.max(raw, 0.15), 2.2); // clamp: never too tiny or too huge
     }, [photos.length]);
 
     return (
@@ -70,6 +81,7 @@ export default function EarthGlobe({ photos, onPhotoClick }: EarthGlobeProps) {
                     key={photo.id || i}
                     photo={photo}
                     position={photoPositions[i]}
+                    tileSize={tileSize}
                     onClick={onPhotoClick}
                 />
             ))}

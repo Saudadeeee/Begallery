@@ -6,10 +6,11 @@ import type { GalleryPhoto } from '../services/cloudinaryService';
 interface PhotoPointProps {
     photo: GalleryPhoto;
     position: [number, number, number];
+    tileSize: number;          // dynamic size so tiles always fill the globe
     onClick: (photo: GalleryPhoto) => void;
 }
 
-export default function PhotoPoint({ photo, position, onClick }: PhotoPointProps) {
+export default function PhotoPoint({ photo, position, tileSize, onClick }: PhotoPointProps) {
     const meshRef = useRef<THREE.Mesh>(null);
     const texture = useLoader(THREE.TextureLoader, photo.thumbnailUrl);
 
@@ -49,7 +50,7 @@ export default function PhotoPoint({ photo, position, onClick }: PhotoPointProps
                 if (meshRef.current) meshRef.current.userData.hovered = false;
             }}
         >
-            <planeGeometry args={[0.3, 0.3]} />
+            <planeGeometry args={[tileSize, tileSize]} />
             <meshBasicMaterial map={texture} side={THREE.DoubleSide} transparent opacity={0.9} />
         </mesh>
     );
