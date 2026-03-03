@@ -1,12 +1,12 @@
 import { useRef, useMemo } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { PhotoData } from '../services/imageService';
+import type { GalleryPhoto } from '../services/cloudinaryService';
 
 interface PhotoPointProps {
-    photo: PhotoData;
+    photo: GalleryPhoto;
     position: [number, number, number];
-    onClick: (photo: PhotoData) => void;
+    onClick: (photo: GalleryPhoto) => void;
 }
 
 export default function PhotoPoint({ photo, position, onClick }: PhotoPointProps) {

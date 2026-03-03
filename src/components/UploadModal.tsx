@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { generateThumbnail } from '../utils/thumbnailGen';
-import { uploadPhoto } from '../services/imageService';
+import { uploadPhotoToCloudinary } from '../services/cloudinaryService';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
 
 interface UploadModalProps {
@@ -38,16 +37,21 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
 
         try {
             for (const file of files) {
-                const thumbnail = await generateThumbnail(file);
-                await uploadPhoto(file, thumbnail);
+                // Task 1 execution: Upload original file directly to Cloudinary (unsigned, no client-side compression)
+                await uploadPhotoToCloudinary(file);
                 completed++;
                 setProgress((completed / files.length) * 100);
             }
-            onUploadSuccess();
-            onClose(); // Close the modal upon success
+
+            onUploadSuccess(); // Inform parent to refetch or display success
+
+            // We don't close immediately here because Cloudinary lists take 1-2 mins to update.
+            // Inform the user about the caching delay.
+            alert('Upload successful! Note: It may take 1-2 minutes for new images to appear on the globe due to Cloudinary caching. Please refresh the page later to see them.');
+            onClose();
         } catch (error) {
             console.error(error);
-            alert('Upload failed. Check console and Firebase config.');
+            alert('Upload failed. Check console and Cloudinary config.');
         } finally {
             setIsUploading(false);
         }
@@ -97,7 +101,7 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
                         }} onClick={() => document.getElementById('file-upload')?.click()}>
                             <UploadCloud size={48} color="#3b82f6" style={{ marginBottom: '10px' }} />
                             <p style={{ margin: 0, fontWeight: 500 }}>Click to select or drag & drop</p>
-                            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '8px' }}>Supports JPG, PNG</p>
+                            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '8px' }}>Supports JPG, PNG (Original quality)</p>
                             <input
                                 id="file-upload"
                                 type="file"
@@ -118,12 +122,12 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
                                         </div>
                                         <p style={{ fontSize: '0.9rem', textAlign: 'center', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '10px 0 0' }}>
                                             <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}><Loader2 size={16} /></span>
-                                            Uploading {Math.round(progress)}%
+                                            Uploading original images... {Math.round(progress)}%
                                         </p>
                                     </div>
                                 ) : (
                                     <button onClick={handleUpload} className="btn btn-primary" style={{ width: '100%', marginTop: '15px', padding: '12px' }}>
-                                        Start Upload
+                                        Start Upload to Cloudinary
                                     </button>
                                 )}
                             </div>

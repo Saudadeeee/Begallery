@@ -5,20 +5,20 @@ import BackgroundStars from './components/BackgroundStars';
 import EarthGlobe from './components/EarthGlobe';
 import UploadModal from './components/UploadModal';
 import Lightbox from './components/Lightbox';
-import { fetchPhotos } from './services/imageService';
-import type { PhotoData } from './services/imageService';
+import { fetchCloudinaryImageList } from './services/cloudinaryService';
+import type { GalleryPhoto } from './services/cloudinaryService';
 import { Loader2 } from 'lucide-react';
 
 function App() {
-  const [photos, setPhotos] = useState<PhotoData[]>([]);
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<PhotoData | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<GalleryPhoto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadPhotos = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchPhotos();
+      const data = await fetchCloudinaryImageList();
       setPhotos(data);
     } catch (error) {
       console.error(error);

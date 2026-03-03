@@ -1,9 +1,9 @@
 import { X, Download, Loader2 } from 'lucide-react';
-import type { PhotoData } from '../services/imageService';
+import type { GalleryPhoto } from '../services/cloudinaryService';
 import { useState } from 'react';
 
 interface LightboxProps {
-    photo: PhotoData | null;
+    photo: GalleryPhoto | null;
     onClose: () => void;
 }
 

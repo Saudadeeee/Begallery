@@ -2,12 +2,12 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Sphere, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import type { PhotoData } from '../services/imageService';
+import type { GalleryPhoto } from '../services/cloudinaryService';
 import PhotoPoint from './PhotoPoint';
 
 interface EarthGlobeProps {
-    photos: PhotoData[];
-    onPhotoClick: (photo: PhotoData) => void;
+    photos: GalleryPhoto[];
+    onPhotoClick: (photo: GalleryPhoto) => void;
 }
 
 // Function to generate pseudo-random points on a sphere
