@@ -16,7 +16,7 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
 
     const handleAuth = (e: React.FormEvent) => {
         e.preventDefault();
-        const correctPassword = import.meta.env.VITE_UPLOAD_PASSWORD || 'earth';
+        const correctPassword = import.meta.env.VITE_UPLOAD_PASSWORD || '25122025';
         if (password === correctPassword) {
             setIsAuthenticated(true);
         } else {
