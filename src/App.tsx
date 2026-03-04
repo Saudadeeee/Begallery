@@ -6,8 +6,8 @@ import EarthGlobe from './components/EarthGlobe';
 import AlbumGrid from './components/AlbumGrid';
 import UploadModal from './components/UploadModal';
 import Lightbox from './components/Lightbox';
-import { fetchCloudinaryImageList } from './services/cloudinaryService';
-import type { GalleryPhoto } from './services/cloudinaryService';
+import { fetchCloudinaryImageList, getCloudinaryUrls } from './services/cloudinaryService';
+import type { GalleryPhoto, CloudinaryUploadResponse } from './services/cloudinaryService';
 import { Loader2, Globe, LayoutGrid } from 'lucide-react';
 
 type ViewMode = 'globe' | 'album';
@@ -34,6 +34,41 @@ function App() {
   useEffect(() => {
     loadPhotos();
   }, []);
+
+  const handleUploadSuccess = (newUploads: CloudinaryUploadResponse[]) => {
+    // Optimistic UI Update: Instantly add the newly uploaded photos to the UI
+    const newGalleryPhotos: GalleryPhoto[] = newUploads.map(upload => {
+      const urls = getCloudinaryUrls(upload.public_id, upload.version, upload.format);
+      return {
+        id: upload.public_id,
+        originalUrl: urls.originalUrl,
+        thumbnailUrl: urls.thumbnailUrl,
+        createdAt: new Date(upload.created_at).getTime()
+      };
+    });
+
+    // Prepend new photos to the existing state
+    setPhotos(prev => [...newGalleryPhotos, ...prev]);
+
+    // Show a temporary success toast instead of an alert
+    const toast = document.createElement('div');
+    toast.className = 'upload-toast glass-panel';
+    toast.innerHTML = `<span style="display:flex;align-items:center;gap:8px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Upload successful! Added ${newUploads.length} photo(s).</span>`;
+    Object.assign(toast.style, {
+      position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+      padding: '12px 24px', background: 'rgba(15,23,42,0.9)', color: 'white',
+      borderRadius: '30px', zIndex: 1000, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+      opacity: 0, transition: 'opacity 0.3s ease'
+    });
+    document.body.appendChild(toast);
+
+    // Animate in, await, animate out
+    requestAnimationFrame(() => toast.style.opacity = '1');
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => document.body.removeChild(toast), 300);
+    }, 4000);
+  };
 
   return (
     <div className="app-container">
@@ -131,7 +166,7 @@ function App() {
       {isUploadOpen && (
         <UploadModal
           onClose={() => setIsUploadOpen(false)}
-          onUploadSuccess={loadPhotos}
+          onUploadSuccess={handleUploadSuccess}
         />
       )}
 

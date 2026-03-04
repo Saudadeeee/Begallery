@@ -120,7 +120,7 @@ export const fetchCloudinaryImageList = async (): Promise<GalleryPhoto[]> => {
 /**
  * Interface representing the response after a successful Cloudinary unsigned upload.
  */
-interface CloudinaryUploadResponse {
+export interface CloudinaryUploadResponse {
     asset_id: string;
     public_id: string;
     version: number;

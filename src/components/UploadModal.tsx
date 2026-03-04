@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { uploadPhotoToCloudinary } from '../services/cloudinaryService';
 import { X, UploadCloud, Loader2 } from 'lucide-react';
+import type { CloudinaryUploadResponse } from '../services/cloudinaryService';
 
 interface UploadModalProps {
     onClose: () => void;
-    onUploadSuccess: () => void;
+    onUploadSuccess: (newPhotos: CloudinaryUploadResponse[]) => void;
 }
 
 export default function UploadModal({ onClose, onUploadSuccess }: UploadModalProps) {
@@ -13,6 +14,75 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
     const [files, setFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [progress, setProgress] = useState(0);
+
+    // Camera State
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+
+    // Stop camera stream safely
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+    };
+
+    const startCamera = async () => {
+        setIsCameraActive(true);
+        setCapturedImage(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' } // Prefer rear camera on mobile
+            });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            alert("Could not access camera. Please check permissions.");
+            setIsCameraActive(false);
+        }
+    };
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                setCapturedImage(dataUrl);
+            }
+        }
+    };
+
+    const retakePhoto = () => {
+        setCapturedImage(null);
+    };
+
+    const acceptCapturedPhoto = async () => {
+        if (!capturedImage) return;
+        // Convert base64 DataURL back to Blob/File to pass into the existing flow
+        const res = await fetch(capturedImage);
+        const blob = await res.blob();
+        const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+        setFiles(prev => [...prev, file]);
+        stopCamera();
+        setIsCameraActive(false);
+        setCapturedImage(null);
+    };
+
+    // Make sure we stop the camera if the modal closes unexpectedly
+    React.useEffect(() => {
+        return () => stopCamera();
+    }, []);
 
     const handleAuth = (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,20 +104,18 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
         if (files.length === 0) return;
         setIsUploading(true);
         let completed = 0;
+        const uploadedResponses: CloudinaryUploadResponse[] = [];
 
         try {
             for (const file of files) {
-                // Task 1 execution: Upload original file directly to Cloudinary (unsigned, no client-side compression)
-                await uploadPhotoToCloudinary(file);
+                const res = await uploadPhotoToCloudinary(file);
+                uploadedResponses.push(res);
                 completed++;
                 setProgress((completed / files.length) * 100);
             }
 
-            onUploadSuccess(); // Inform parent to refetch or display success
-
-            // We don't close immediately here because Cloudinary lists take 1-2 mins to update.
-            // Inform the user about the caching delay.
-            alert('Upload successful! Note: It may take 1-2 minutes for new images to appear on the globe due to Cloudinary caching. Please refresh the page later to see them.');
+            // Pass the new data back to App.tsx for Optimistic Update
+            onUploadSuccess(uploadedResponses);
             onClose();
         } catch (error) {
             console.error(error);
@@ -67,7 +135,7 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
                 background: 'rgba(15, 23, 42, 0.8)', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px',
                 position: 'relative', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)'
             }}>
-                <button onClick={onClose} style={{
+                <button onClick={() => { stopCamera(); onClose(); }} style={{
                     position: 'absolute', top: '15px', right: '15px', background: 'transparent',
                     border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.7
                 }}>
@@ -95,22 +163,64 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
                     </form>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{
-                            border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '40px 20px',
-                            textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease', background: 'rgba(255,255,255,0.02)'
-                        }} onClick={() => document.getElementById('file-upload')?.click()}>
-                            <UploadCloud size={48} color="#3b82f6" style={{ marginBottom: '10px' }} />
-                            <p style={{ margin: 0, fontWeight: 500 }}>Click to select or drag & drop</p>
-                            <p style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '8px' }}>Supports JPG, PNG (Original quality)</p>
-                            <input
-                                id="file-upload"
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={handleFileSelect}
-                                style={{ display: 'none' }}
-                            />
-                        </div>
+                        {/* Camera Flow or File Selection Flow */}
+                        {isCameraActive ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+                                    {!capturedImage ? (
+                                        <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block' }} />
+                                    ) : (
+                                        <img src={capturedImage} alt="Captured" style={{ width: '100%', display: 'block' }} />
+                                    )}
+                                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                                </div>
+
+                                {!capturedImage ? (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button onClick={capturePhoto} className="btn" style={{ background: '#3b82f6', color: '#fff', padding: '10px 20px' }}>
+                                            📸 Snap Photo
+                                        </button>
+                                        <button onClick={() => { stopCamera(); setIsCameraActive(false); }} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button onClick={retakePhoto} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                                            Retake
+                                        </button>
+                                        <button onClick={acceptCapturedPhoto} className="btn btn-primary" style={{ padding: '10px 20px' }}>
+                                            Accept
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                <div style={{
+                                    border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '20px',
+                                    textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease', background: 'rgba(255,255,255,0.02)'
+                                }} onClick={() => document.getElementById('file-upload')?.click()}>
+                                    <UploadCloud size={32} color="#3b82f6" style={{ marginBottom: '10px' }} />
+                                    <p style={{ margin: 0, fontWeight: 500, fontSize: '0.9rem' }}>Upload File</p>
+                                    <input
+                                        id="file-upload"
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+                                <div style={{
+                                    border: '2px solid rgba(59, 130, 246, 0.4)', borderRadius: '12px', padding: '20px',
+                                    textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease', background: 'rgba(59, 130, 246, 0.1)'
+                                }} onClick={startCamera}>
+                                    <span style={{ fontSize: '32px', display: 'block', marginBottom: '10px' }}>📸</span>
+                                    <p style={{ margin: 0, fontWeight: 500, fontSize: '0.9rem', color: '#93c5fd' }}>Take Photo</p>
+                                </div>
+                            </div>
+                        )}
 
                         {files.length > 0 && (
                             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '10px' }}>
